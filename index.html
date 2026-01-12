@@ -1,1508 +1,3015 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
+
     <title>Dashboard V7 - Sistema Predictivo de Ventas</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
+
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f8fafc; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
         .scroll-area { overflow-y: auto; scrollbar-width: thin; }
+
         ::-webkit-scrollbar { width: 8px; }
+
         ::-webkit-scrollbar-track { background: #f1f1f1; }
+
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
         .row-hover:hover { background-color: #f1f5f9; cursor: pointer; }
+
         .selected-row { background-color: #eff6ff; border-left: 4px solid #3b82f6; }
+
         .pulse-alert { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
         .urgente-badge { animation: shake 0.5s ease-in-out infinite; }
+
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
     </style>
+
 </head>
+
 <body class="text-gray-800">
 
+
+
     <!-- HEADER CON FILTROS -->
+
     <div class="bg-white border-b px-6 py-4 shadow-sm z-20 shrink-0">
+
         <div class="flex flex-col gap-4">
+
             <!-- Primera fila: Logo y KPIs -->
+
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+
                 <div class="flex items-center gap-6">
+
                     <div class="bg-blue-600 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow">
+
                         <i class="fas fa-robot"></i>
+
                     </div>
+
                     <div>
+
                         <h1 class="font-bold text-lg text-gray-800">Monitor Predictivo de Ventas</h1>
+
                         <div class="flex gap-6 text-sm">
+
                             <div>
+
                                 <span class="text-gray-400 text-xs uppercase font-bold">Venta Neta</span>
+
                                 <div class="font-bold text-blue-700 text-lg" id="kpi-neto">$ -</div>
+
                             </div>
+
                             <div class="border-l pl-6">
+
                                 <span class="text-gray-400 text-xs uppercase font-bold">Clientes Activos</span>
+
                                 <div class="font-bold text-green-600 text-lg" id="kpi-clientes">-</div>
+
                             </div>
+
                             <div class="border-l pl-6">
+
                                 <span class="text-gray-400 text-xs uppercase font-bold">Deben Comprar</span>
+
                                 <div class="font-bold text-orange-600 text-lg pulse-alert" id="kpi-predicciones">-</div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
+
 
                 <div class="flex items-center gap-4">
+
                     <div id="file-status" class="text-xs font-bold text-red-500 hidden">Error de lectura</div>
+
                     <label class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition shadow flex items-center gap-2">
+
                         <i class="fas fa-file-excel"></i> Subir Excel/CSV
+
                         <input type="file" id="upload-csv" accept=".csv,.xlsx,.xls" class="hidden" />
+
                     </label>
+
                 </div>
+
             </div>
+
+
 
             <!-- Segunda fila: Filtros Avanzados -->
+
             <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-4">
+
                 <div class="flex items-center gap-2 mb-3">
+
                     <i class="fas fa-filter text-blue-600"></i>
+
                     <span class="font-bold text-blue-800">Filtros Inteligentes</span>
+
                 </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+
                     <!-- Filtro Vendedor -->
+
                     <div>
+
                         <label class="text-xs text-gray-600 font-bold mb-1 block">Vendedor</label>
+
                         <select id="filtro-vendedor" onchange="aplicarFiltros()" class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+
                             <option value="">Todos los vendedores</option>
+
                         </select>
+
                     </div>
+
                     
+
                     <!-- Filtro Mes -->
+
                     <div>
+
                         <label class="text-xs text-gray-600 font-bold mb-1 block">Período</label>
+
                         <select id="filtro-mes" onchange="aplicarFiltros()" class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+
                             <option value="">Todos los períodos</option>
+
                         </select>
+
                     </div>
+
                     
+
                     <!-- Filtro Tipo Producto -->
+
                     <div>
+
                         <label class="text-xs text-gray-600 font-bold mb-1 block">Categoría</label>
+
                         <select id="filtro-categoria" onchange="aplicarFiltros()" class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+
                             <option value="">Todas las categorías</option>
+
                             <option value="AROMATIZACION">🌸 Aromatización (Recurrente)</option>
+
                             <option value="LIMPIEZA">🧼 Limpieza</option>
+
                             <option value="OTROS">📦 Otros</option>
+
                         </select>
+
                     </div>
+
                     
+
                     <!-- Botón Limpiar -->
+
                     <div class="flex items-end">
+
                         <button onclick="limpiarFiltros()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+
                             <i class="fas fa-times"></i> Limpiar Filtros
+
                         </button>
+
                     </div>
+
                 </div>
+
                 
+
                 <!-- Resumen de filtros activos -->
+
                 <div id="filtros-activos" class="mt-3 hidden">
+
                     <div class="text-xs text-blue-700 font-bold">Filtros aplicados:</div>
+
                     <div id="filtros-activos-list" class="flex flex-wrap gap-2 mt-1"></div>
+
                 </div>
+
             </div>
+
+
 
             <!-- PESTAÑAS DE NAVEGACIÓN -->
+
             <div class="flex gap-2 border-t pt-4">
+
                 <button onclick="switchTab('predicciones')" id="tab-predicciones" class="px-4 py-2 text-sm font-bold rounded-lg transition bg-orange-600 text-white">
+
                     <i class="fas fa-chart-line mr-2"></i>Predicciones de Compra
+
                 </button>
+
                 <button onclick="switchTab('ventas')" id="tab-ventas" class="px-4 py-2 text-sm font-bold rounded-lg transition bg-gray-200 text-gray-600 hover:bg-gray-300">
+
                     <i class="fas fa-shopping-cart mr-2"></i>Historial Ventas
+
                 </button>
+
                 <button onclick="switchTab('cotizaciones')" id="tab-cotizaciones" class="px-4 py-2 text-sm font-bold rounded-lg transition bg-gray-200 text-gray-600 hover:bg-gray-300">
+
                     <i class="fas fa-file-invoice mr-2"></i>Seguimiento Cotizaciones
+
                 </button>
+
             </div>
+
         </div>
+
     </div>
+
+
 
     <div class="flex flex-1 overflow-hidden">
+
         
+
         <!-- SIDEBAR LATERAL -->
+
         <div class="w-full md:w-80 bg-white border-r flex flex-col z-10 shadow-lg md:shadow-none">
+
             <div class="p-4 bg-gray-50 border-b">
+
                 <div class="relative">
+
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+
                     <input type="text" id="search-input" placeholder="BUSCAR CLIENTE..." 
+
                            class="w-full pl-9 pr-4 py-2 rounded border focus:ring-2 focus:ring-blue-500 outline-none text-sm uppercase font-semibold">
+
                 </div>
+
                 <div class="flex gap-2 mt-2">
+
                     <button onclick="filterList('urgent')" class="flex-1 py-1 text-xs font-bold text-red-700 bg-red-100 rounded hover:bg-red-200">
+
                         <i class="fas fa-exclamation-triangle"></i> Urgentes
+
                     </button>
+
                     <button onclick="filterList('risk')" class="flex-1 py-1 text-xs font-bold text-yellow-700 bg-yellow-100 rounded hover:bg-yellow-200">Riesgo</button>
+
                     <button onclick="filterList('all')" class="flex-1 py-1 text-xs font-bold text-gray-600 bg-gray-200 rounded hover:bg-gray-300">Todos</button>
+
                 </div>
+
             </div>
+
+
 
             <div id="clients-list" class="flex-1 scroll-area">
+
                 <div class="p-8 text-center text-gray-400 text-sm">
+
                     <i class="fas fa-arrow-up mb-2"></i><br>Sube tu archivo para comenzar
+
                 </div>
+
             </div>
+
         </div>
+
+
 
         <!-- ÁREA PRINCIPAL -->
+
         <div class="flex-1 bg-gray-100 scroll-area p-6 relative">
+
             
+
             <!-- ====================== -->
+
             <!-- NUEVA VISTA: PREDICCIONES DE COMPRA -->
+
             <!-- ====================== -->
+
             <div id="predicciones-view" class="max-w-6xl mx-auto space-y-6">
+
                 
+
                 <!-- Panel de Alertas Urgentes -->
+
                 <div class="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 rounded-lg shadow-lg">
+
                     <div class="flex items-center justify-between mb-4">
+
                         <div class="flex items-center gap-3">
+
                             <i class="fas fa-bell text-3xl urgente-badge"></i>
+
                             <div>
+
                                 <h3 class="font-bold text-xl">Alertas de Recompra</h3>
+
                                 <p class="text-sm opacity-90">Clientes que deberían estar comprando AHORA</p>
+
                             </div>
+
                         </div>
+
                         <div class="bg-white/20 backdrop-blur rounded-lg px-4 py-2">
+
                             <div class="text-xs uppercase opacity-80">Fecha actual</div>
+
                             <div class="text-lg font-bold" id="fecha-actual">-</div>
+
                         </div>
+
                     </div>
+
                     
+
                     <div class="grid md:grid-cols-4 gap-4">
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Comprar Esta Semana</div>
+
                             <div class="text-3xl font-bold" id="alert-esta-semana">0</div>
+
                         </div>
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Atrasados</div>
+
                             <div class="text-3xl font-bold text-yellow-300" id="alert-atrasados">0</div>
+
                         </div>
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Próximos 30 Días</div>
+
                             <div class="text-3xl font-bold" id="alert-proximos">0</div>
+
                         </div>
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Productos Recurrentes</div>
+
                             <div class="text-3xl font-bold" id="alert-recurrentes">0</div>
+
                         </div>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Clientes que DEBEN comprar ESTA SEMANA -->
+
                 <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-red-500">
+
                     <div class="flex justify-between items-center mb-4">
+
                         <h3 class="font-bold text-gray-800 flex items-center gap-2">
+
                             <i class="fas fa-fire text-red-500"></i>
+
                             Prioridad Máxima - Contactar HOY
+
                             <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold urgente-badge" id="count-urgentes">0</span>
+
                         </h3>
+
                         <button onclick="descargarListaContactos('urgente')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow flex items-center gap-2">
+
                             <i class="fas fa-phone"></i> Generar Lista de Llamadas
+
                         </button>
+
                     </div>
+
                     <div id="lista-urgentes" class="space-y-3">
+
                         <!-- Se llena dinámicamente -->
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Clientes ATRASADOS (pasaron su fecha) -->
+
                 <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-yellow-500">
+
                     <div class="flex justify-between items-center mb-4">
+
                         <h3 class="font-bold text-gray-800 flex items-center gap-2">
+
                             <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+
                             Clientes Atrasados - Seguimiento Inmediato
+
                             <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-bold" id="count-atrasados">0</span>
+
                         </h3>
+
                         <button onclick="descargarListaContactos('atrasado')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow flex items-center gap-2">
+
                             <i class="fas fa-download"></i> Descargar Lista
+
                         </button>
+
                     </div>
+
                     <div id="lista-atrasados" class="space-y-3">
+
                         <!-- Se llena dinámicamente -->
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Próximos a comprar (30 días) -->
+
                 <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+
                     <div class="flex justify-between items-center mb-4">
+
                         <h3 class="font-bold text-gray-800 flex items-center gap-2">
+
                             <i class="fas fa-calendar-alt text-blue-500"></i>
+
                             Próximas Oportunidades (30 días)
+
                             <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold" id="count-proximos">0</span>
+
                         </h3>
+
                         <div class="flex gap-2">
+
                             <button onclick="toggleVistaProximos('lista')" id="btn-vista-lista" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-bold">
+
                                 <i class="fas fa-list"></i> Lista
+
                             </button>
+
                             <button onclick="toggleVistaProximos('calendario')" id="btn-vista-calendario" class="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg text-xs font-bold">
+
                                 <i class="fas fa-calendar"></i> Calendario
+
                             </button>
+
                         </div>
+
                     </div>
+
                     
+
                     <!-- Vista Lista -->
+
                     <div id="lista-proximos" class="space-y-3">
+
                         <!-- Se llena dinámicamente -->
+
                     </div>
+
                     
+
                     <!-- Vista Calendario (opcional) -->
+
                     <div id="calendario-proximos" class="hidden">
+
                         <div class="grid grid-cols-7 gap-2">
+
                             <!-- Calendario dinámico -->
+
                         </div>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Análisis por Vendedor -->
+
                 <div class="bg-white p-6 rounded-lg shadow-sm">
+
                     <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+
                         <i class="fas fa-user-tie text-purple-600"></i>
+
                         Oportunidades por Vendedor
+
                     </h3>
+
                     <div id="tabla-vendedores" class="overflow-x-auto">
+
                         <!-- Tabla dinámica -->
+
                     </div>
+
                 </div>
+
+
 
             </div>
 
+
+
             <!-- ====================== -->
+
             <!-- VISTA: HISTORIAL DE VENTAS (mejorada) -->
+
             <!-- ====================== -->
+
             <div id="global-view" class="hidden max-w-5xl mx-auto space-y-6">
+
                 
+
                 <!-- Resumen del período filtrado -->
+
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-lg shadow-lg">
+
                     <h3 class="font-bold text-xl mb-4">Resumen del Período</h3>
+
                     <div class="grid md:grid-cols-3 gap-4">
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Ventas Totales</div>
+
                             <div class="text-2xl font-bold" id="resumen-ventas">$0</div>
+
                             <div class="text-xs opacity-80" id="resumen-tickets">0 tickets</div>
+
                         </div>
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Clientes Únicos</div>
+
                             <div class="text-2xl font-bold" id="resumen-clientes">0</div>
+
                         </div>
+
                         <div class="bg-white/10 backdrop-blur rounded-lg p-4">
+
                             <div class="text-xs uppercase opacity-80 mb-1">Ticket Promedio</div>
+
                             <div class="text-2xl font-bold" id="resumen-ticket-prom">$0</div>
+
                         </div>
+
                     </div>
+
                 </div>
 
+
+
                 <div class="bg-white p-6 rounded-lg shadow-sm">
+
                     <h3 class="font-bold text-gray-700 mb-4 flex justify-between">
+
                         <span>Evolución de Ventas</span>
+
                         <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Filtrado</span>
+
                     </h3>
+
                     <div class="h-64 w-full">
+
                         <canvas id="salesChart"></canvas>
+
                     </div>
+
                 </div>
 
+
+
                 <div class="bg-white p-6 rounded-lg shadow-sm">
+
                     <h3 class="font-bold text-gray-700 mb-4">Top 10 Productos Más Vendidos</h3>
+
                     <div class="overflow-x-auto">
+
                         <table class="w-full text-sm text-left">
+
                             <thead class="bg-gray-50 text-gray-500 font-bold">
+
                                 <tr>
+
                                     <th class="p-3">Producto</th>
+
                                     <th class="p-3 text-center">Categoría</th>
+
                                     <th class="p-3 text-right">Cant.</th>
+
                                     <th class="p-3 text-right">Venta Total</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="top-products-body">
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Lista de clientes con frecuencia de compra -->
+
                 <div class="bg-white p-6 rounded-lg shadow-sm">
+
                     <h3 class="font-bold text-gray-700 mb-4">Clientes con Patrón de Compra</h3>
+
                     <div id="clientes-con-patron" class="space-y-3">
+
                         <!-- Se llena dinámicamente -->
+
                     </div>
+
                 </div>
 
+
+
             </div>
+
             <!-- ====================== -->
+
             <!-- VISTA: DETALLE CLIENTE (mejorada) -->
+
             <!-- ====================== -->
+
             <div id="detail-view" class="hidden max-w-5xl mx-auto animate-fade-in">
+
                 
+
                 <button onclick="showGlobal()" class="mb-4 text-sm font-bold text-gray-500 hover:text-blue-600 flex items-center gap-2">
+
                     <i class="fas fa-arrow-left"></i> Volver al Dashboard
+
                 </button>
 
+
+
                 <div class="bg-white rounded-lg shadow-sm border-l-4 border-blue-500 p-6 mb-6">
+
                     <div class="flex justify-between items-start flex-wrap gap-4">
+
                         <div>
+
                             <h2 class="text-2xl font-bold text-gray-900 leading-tight" id="det-name">NOMBRE CLIENTE</h2>
+
                             <div class="flex items-center gap-2 mt-1">
+
                                 <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-mono" id="det-rut">RUT</span>
+
                                 <span class="text-sm text-gray-500" id="det-address">Dirección</span>
+
                             </div>
+
                         </div>
+
                         <div class="flex gap-2">
+
                             <div id="det-status-badge" class="px-4 py-2 rounded font-bold text-white text-sm shadow">Estado</div>
+
                             <div id="det-prediction-badge" class="px-4 py-2 rounded font-bold text-white text-sm shadow hidden">Predicción</div>
+
                         </div>
+
                     </div>
+
                     
+
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6 pt-4 border-t">
+
                         <div>
+
                             <div class="text-xs text-gray-400 uppercase font-bold">Total Comprado</div>
+
                             <div class="text-lg font-bold text-blue-600" id="det-total">$0</div>
+
                         </div>
+
                         <div>
+
                             <div class="text-xs text-gray-400 uppercase font-bold">Última Compra</div>
+
                             <div class="text-sm font-bold text-gray-700" id="det-last-date">-</div>
+
                         </div>
+
                         <div>
+
                             <div class="text-xs text-gray-400 uppercase font-bold">Días Inactivo</div>
+
                             <div class="text-lg font-bold text-gray-700" id="det-days">0</div>
+
                         </div>
+
                         <div>
+
                             <div class="text-xs text-gray-400 uppercase font-bold">Frecuencia</div>
+
                             <div class="text-lg font-bold text-purple-600" id="det-frecuencia">-</div>
+
                             <div class="text-xs text-gray-500" id="det-frecuencia-desc">-</div>
+
                         </div>
+
                         <div>
+
                             <div class="text-xs text-gray-400 uppercase font-bold">Próxima Compra</div>
+
                             <div class="text-lg font-bold text-orange-600" id="det-proxima">-</div>
+
                             <div class="text-xs text-gray-500" id="det-proxima-dias">-</div>
+
                         </div>
+
                     </div>
+
                 </div>
+
+
 
                 <!-- Análisis de Productos Recurrentes -->
+
                 <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-6 mb-6">
+
                     <h3 class="font-bold text-purple-800 mb-3 flex items-center gap-2">
+
                         <i class="fas fa-sync-alt"></i>
+
                         Productos Recurrentes del Cliente
+
                     </h3>
+
                     <div id="productos-recurrentes-cliente" class="grid md:grid-cols-2 gap-3">
+
                         <!-- Se llena dinámicamente -->
+
                     </div>
+
                 </div>
+
+
 
                 <h3 class="font-bold text-gray-700 mb-3 ml-1">Historial de Compras</h3>
+
                 <div id="invoice-history" class="space-y-3">
+
                 </div>
+
+
 
             </div>
 
+
+
             <!-- ====================== -->
+
             <!-- VISTA: SEGUIMIENTO COTIZACIONES (igual que antes) -->
+
             <!-- ====================== -->
+
             <div id="cotizaciones-view" class="hidden max-w-7xl mx-auto space-y-6">
+
                 
+
                 <div class="bg-white p-6 rounded-lg shadow-sm border-2 border-dashed border-gray-300">
+
                     <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+
                         <i class="fas fa-upload text-blue-600"></i>
+
                         Cargar Archivos para Análisis
+
                     </h3>
+
                     <div class="grid md:grid-cols-2 gap-4">
+
                         <div>
+
                             <label class="block text-sm font-bold text-gray-600 mb-2">1. Archivo de Cotizaciones (.xls)</label>
+
                             <label class="w-full bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-700 px-4 py-3 rounded-lg font-bold cursor-pointer transition flex items-center justify-center gap-2">
+
                                 <i class="fas fa-file-invoice"></i>
+
                                 <span id="cot-file-name">Seleccionar Cotizaciones</span>
+
                                 <input type="file" id="upload-cotizaciones" accept=".xls,.xlsx" class="hidden" />
+
                             </label>
+
                         </div>
+
                         <div>
+
                             <label class="block text-sm font-bold text-gray-600 mb-2">2. Archivo de Ventas (.xlsx)</label>
+
                             <label class="w-full bg-green-50 hover:bg-green-100 border-2 border-green-300 text-green-700 px-4 py-3 rounded-lg font-bold cursor-pointer transition flex items-center justify-center gap-2">
+
                                 <i class="fas fa-file-excel"></i>
+
                                 <span id="ventas-file-name">Seleccionar Ventas</span>
+
                                 <input type="file" id="upload-ventas-cot" accept=".xlsx,.xls,.csv" class="hidden" />
+
                             </label>
+
                         </div>
+
                     </div>
+
                     <button onclick="analizarCotizaciones()" id="btn-analizar" class="mt-4 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-bold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+
                         <i class="fas fa-chart-bar mr-2"></i>Analizar Cotizaciones
+
                     </button>
+
                 </div>
+
+
 
                 <div id="resultados-cotizaciones" class="hidden space-y-6">
+
                     <!-- (Mantener el código de cotizaciones existente) -->
+
                 </div>
 
+
+
             </div>
+
+
 
             <!-- MODAL DETALLE COTIZACIÓN -->
+
             <div id="modal-detalle-cot" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+
                 <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+
                     <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+
                         <div class="flex justify-between items-start">
+
                             <div>
+
                                 <h3 class="text-xl font-bold" id="modal-titulo">Detalle</h3>
+
                                 <p class="text-sm opacity-90 mt-1" id="modal-subtitulo">-</p>
+
                             </div>
+
                             <button onclick="cerrarModalDetalle()" class="text-white hover:bg-white/20 rounded-lg p-2 transition">
+
                                 <i class="fas fa-times text-xl"></i>
+
                             </button>
+
                         </div>
+
                     </div>
+
                     
+
                     <div class="p-6">
+
                         <div id="modal-contenido" class="space-y-4">
+
                             <!-- Contenido dinámico -->
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
 
+
+
         </div>
+
     </div>
 
+
+
     <script>
-        // =============================================
-        // CONFIGURACIÓN Y ESTADO GLOBAL
-        // =============================================
-        
-        const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-        
-        let DB = { 
-            clients: {}, 
-            salesByMonth: {}, 
-            topProducts: {}, 
-            salesByClient: {},
-            vendedores: new Set(),
-            meses: new Set(),
-            rawData: [] // Guardar datos crudos para filtrado
-        };
-        
-        let currentList = [];
-        let chartInstance = null;
-        let mesSeleccionado = null;
-        let clientesPorMes = {};
-        
-        // Nuevos: Sistema de predicciones
-        let predicciones = {
-            urgentes: [],      // Deben comprar esta semana
-            atrasados: [],     // Ya pasó su fecha esperada
-            proximos: [],      // Próximos 30 días
-            patrones: {}       // Patrones de compra por cliente
-        };
-        
-        // Filtros activos
-        let filtrosActivos = {
-            vendedor: '',
-            mes: '',
-            categoria: ''
-        };
 
         // =============================================
-        // FUNCIONES DE UTILIDAD
+
+        // CONFIGURACIÓN Y ESTADO GLOBAL
+
         // =============================================
+
         
+
+        const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+
+        
+
+        let DB = { 
+
+            clients: {}, 
+
+            salesByMonth: {}, 
+
+            topProducts: {}, 
+
+            salesByClient: {},
+
+            vendedores: new Set(),
+
+            meses: new Set(),
+
+            rawData: [] // Guardar datos crudos para filtrado
+
+        };
+
+        
+
+        let currentList = [];
+
+        let chartInstance = null;
+
+        let mesSeleccionado = null;
+
+        let clientesPorMes = {};
+
+        
+
+        // Nuevos: Sistema de predicciones
+
+        let predicciones = {
+
+            urgentes: [],      // Deben comprar esta semana
+
+            atrasados: [],     // Ya pasó su fecha esperada
+
+            proximos: [],      // Próximos 30 días
+
+            patrones: {}       // Patrones de compra por cliente
+
+        };
+
+        
+
+        // Filtros activos
+
+        let filtrosActivos = {
+
+            vendedor: '',
+
+            mes: '',
+
+            categoria: ''
+
+        };
+
+
+
+        // =============================================
+
+        // FUNCIONES DE UTILIDAD
+
+        // =============================================
+
+        
+
         function parseCLP(val) {
+
             if (!val) return 0;
+
             if (typeof val === 'number') return val;
+
             
+
             let str = val.toString().trim();
+
             
+
             if (!str.includes('.') && !str.includes(',')) {
+
                 return parseFloat(str) || 0;
+
             }
+
             
+
             if (str.includes(',')) {
+
                 str = str.replace(/\./g, '');
+
                 str = str.replace(',', '.');
+
                 return parseFloat(str) || 0;
+
             }
+
             
+
             const parts = str.split('.');
+
             if (parts.length === 2) {
+
                 if (parts[1].length === 3) {
+
                     str = str.replace(/\./g, '');
+
                 }
+
             } else if (parts.length > 2) {
+
                 str = str.replace(/\./g, '');
+
             }
+
             
+
             return parseFloat(str) || 0;
+
         }
+
+
 
         function parseDate(dateStr) {
+
             if (!dateStr) return null;
+
             const parts = dateStr.split('/');
+
             if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+
             return new Date(dateStr);
+
         }
+
+
 
         function diasEntre(fecha1, fecha2) {
+
             const diffTime = Math.abs(fecha2 - fecha1);
+
             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
         }
+
+
 
         function categorizarProducto(nombreProducto) {
+
             const nombre = nombreProducto.toUpperCase();
+
             
+
             // Aromatización (productos recurrentes más probables)
+
             if (nombre.includes('AROMAT') || nombre.includes('FRAGANCIA') || 
+
                 nombre.includes('PERFUM') || nombre.includes('ESENCIA') ||
+
                 nombre.includes('DIFUSOR') || nombre.includes('MIKADO')) {
+
                 return 'AROMATIZACION';
+
             }
+
             
+
             // Limpieza
+
             if (nombre.includes('LIMPIE') || nombre.includes('DESINFECT') || 
+
                 nombre.includes('JABON') || nombre.includes('DETERGENTE') ||
+
                 nombre.includes('DISPENSADOR') || nombre.includes('PAPEL')) {
+
                 return 'LIMPIEZA';
+
             }
+
             
+
             return 'OTROS';
+
         }
 
+
+
         // =============================================
+
         // CARGA Y PROCESAMIENTO DE DATOS
+
         // =============================================
+
         
+
         document.getElementById('upload-csv').addEventListener('change', function(e) {
+
             const file = e.target.files[0];
+
             if (!file) return;
 
+
+
             document.getElementById('file-status').classList.add('hidden');
+
             document.getElementById('clients-list').innerHTML = '<div class="p-8 text-center text-blue-500 font-bold">Procesando... <i class="fas fa-spinner fa-spin"></i></div>';
 
+
+
             const fileName = file.name.toLowerCase();
+
             
+
             if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+
                 const reader = new FileReader();
+
                 reader.onload = function(e) {
+
                     try {
+
                         const data = new Uint8Array(e.target.result);
+
                         const workbook = XLSX.read(data, { type: 'array', raw: true, defval: '' });
+
                         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
                         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: true, defval: '' });
+
                         
+
                         if (jsonData.length < 2) {
+
                             alert("El archivo Excel parece vacío.");
+
                             return;
+
                         }
+
                         
+
                         const headers = jsonData[0].map(h => (h || '').toString().trim().toLowerCase());
+
                         const dataRows = jsonData.slice(1).map(row => {
+
                             const obj = {};
+
                             headers.forEach((h, i) => {
+
                                 obj[h] = row[i] || '';
+
                             });
+
                             return obj;
+
                         });
+
                         
+
                         processData(dataRows);
+
                     } catch(err) {
+
                         alert("Error al leer Excel: " + err.message);
+
                         console.error(err);
+
                     }
+
                 };
+
                 reader.readAsArrayBuffer(file);
+
                 
+
             } else if (fileName.endsWith('.csv')) {
+
                 Papa.parse(file, {
+
                     header: true,
+
                     skipEmptyLines: true,
+
                     delimiter: ";",
+
                     encoding: "ISO-8859-1",
+
                     transformHeader: h => h.trim().toLowerCase(),
+
                     complete: function(results) {
+
                         if (results.data.length < 2) {
+
                             alert("El archivo CSV parece vacío.");
+
                             return;
+
                         }
+
                         processData(results.data);
+
                     },
+
                     error: function(err) {
+
                         alert("Error al leer CSV: " + err.message);
+
                     }
+
                 });
+
             }
+
         });
 
+
+
         function processData(rows) {
+
             DB = { 
+
                 clients: {}, 
+
                 salesByMonth: {}, 
+
                 topProducts: {}, 
+
                 salesByClient: {},
+
                 vendedores: new Set(),
+
                 meses: new Set(),
+
                 rawData: []
+
             };
+
             clientesPorMes = {};
+
             predicciones = { urgentes: [], atrasados: [], proximos: [], patrones: {} };
+
             
+
             let grandTotalNeto = 0;
+
             let maxDate = new Date(0);
 
+
+
             const validRows = rows.filter(row => {
+
                 const hasNullCriticalFields = !row['nombre cliente'] && !row['cliente'] && !row['fecha venta'] && !row['fecha'];
+
                 if (hasNullCriticalFields) return false;
+
                 
+
                 const cantidadStr = String(row['cantidad'] || '').trim().toUpperCase();
+
                 if (cantidadStr === 'TOTAL' || cantidadStr.startsWith('=SUM')) return false;
+
                 
+
                 const netoStr = String(row['venta total neta'] || '').trim();
+
                 if (netoStr.startsWith('=')) return false;
+
                 
+
                 return true;
+
             });
 
+
+
             validRows.forEach(row => {
+
                 const name = (row['nombre cliente'] || row['cliente'] || row['razon social'] || 'DESCONOCIDO').toUpperCase().trim();
+
                 const rut = (row['cliente rut'] || row['rut'] || '').toUpperCase();
+
                 const fechaRaw = row['fecha venta'] || row['fecha'];
+
                 const docId = row['numero documento'] || row['folio'];
+
                 const vendedor = (row['vendedor'] || row['ejecutivo'] || 'SIN ASIGNAR').toUpperCase().trim();
+
                 
+
                 const neto = parseCLP(row['venta total neta'] || row['total neto'] || row['monto neto']);
+
                 const bruto = parseCLP(row['venta total bruta'] || row['total'] || row['monto']);
+
                 const prodName = row['producto / servicio + variante'] || row['producto'];
+
                 const qty = parseCLP(row['cantidad']);
+
                 const precioUnitario = parseCLP(row['precio neto unitario'] || row['precio unitario'] || 0);
+
+
 
                 if (name === 'DESCONOCIDO' && neto === 0) return;
 
+
+
                 // Categorizar producto
+
                 const categoria = categorizarProducto(prodName || '');
 
+
+
                 // Guardar vendedor
+
                 if (vendedor && vendedor !== 'SIN ASIGNAR') {
+
                     DB.vendedores.add(vendedor);
+
                 }
+
+
 
                 grandTotalNeto += neto;
 
+
+
                 const dateObj = parseDate(fechaRaw);
+
                 if (dateObj) {
+
                     if (dateObj > maxDate) maxDate = dateObj;
+
                     const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}`;
+
                     DB.salesByMonth[monthKey] = (DB.salesByMonth[monthKey] || 0) + neto;
+
                     DB.meses.add(monthKey);
+
                     
+
                     // Guardar datos crudos para filtrado
+
                     DB.rawData.push({
+
                         name, rut, dateObj, monthKey, neto, prodName, qty, 
+
                         precioUnitario, docId, vendedor, categoria
+
                     });
+
                 }
+
+
 
                 // Productos
+
                 if (prodName) {
+
                     if (!DB.topProducts[prodName]) {
+
                         DB.topProducts[prodName] = { qty: 0, total: 0, categoria: categoria };
+
                     }
+
                     DB.topProducts[prodName].qty += qty;
+
                     DB.topProducts[prodName].total += neto;
+
                 }
+
+
 
                 // Clientes
+
                 if (!DB.clients[name]) {
+
                     DB.clients[name] = {
+
                         name: name,
+
                         rut: rut,
+
                         address: row['cliente dirección'] || row['cliente comuna'] || '',
+
                         total: 0,
+
                         lastDate: new Date(0),
+
                         invoices: {},
+
                         compras: [], // Array de fechas de compras
+
                         vendedor: vendedor,
+
                         productosRecurrentes: {} // Productos que compra frecuentemente
+
                     };
+
                 }
+
                 
+
                 const c = DB.clients[name];
+
                 c.total += neto;
+
                 if (dateObj && dateObj > c.lastDate) c.lastDate = dateObj;
+
                 
+
                 // Registrar fecha de compra
+
                 if (dateObj) {
+
                     c.compras.push(dateObj);
+
                     
+
                     // Registrar productos recurrentes
+
                     if (prodName) {
+
                         if (!c.productosRecurrentes[prodName]) {
+
                             c.productosRecurrentes[prodName] = {
+
                                 nombre: prodName,
+
                                 categoria: categoria,
+
                                 veces: 0,
+
                                 ultimaCompra: dateObj,
+
                                 totalGastado: 0
+
                             };
+
                         }
+
                         c.productosRecurrentes[prodName].veces++;
+
                         c.productosRecurrentes[prodName].totalGastado += neto;
+
                         if (dateObj > c.productosRecurrentes[prodName].ultimaCompra) {
+
                             c.productosRecurrentes[prodName].ultimaCompra = dateObj;
+
                         }
+
                     }
+
                 }
+
+
 
                 const finalDoc = docId || 'S/F';
+
                 if (!c.invoices[finalDoc]) {
+
                     c.invoices[finalDoc] = { id: finalDoc, date: fechaRaw, dateObj: dateObj, total: 0, items: [] };
+
                 }
+
                 c.invoices[finalDoc].total += neto;
+
                 c.invoices[finalDoc].items.push({ 
+
                     prod: prodName, 
+
                     qty: qty, 
+
                     val: precioUnitario || (neto / qty),
+
                     categoria: categoria
+
                 });
+
             });
+
+
 
             // Calcular patrones y predicciones
+
             calcularPatronesCompra(maxDate);
 
+
+
             // Actualizar UI
+
             document.getElementById('kpi-neto').innerText = CLP.format(grandTotalNeto);
+
             document.getElementById('kpi-clientes').innerText = Object.keys(DB.clients).length;
+
             
+
             // Poblar filtros
+
             poblarFiltros();
+
             
+
             // Aplicar filtros (inicialmente muestra todo)
+
             aplicarFiltros();
+
             
+
             // Mostrar fecha actual
+
             document.getElementById('fecha-actual').innerText = new Date().toLocaleDateString('es-CL');
+
         }
 
+
+
         // =============================================
+
         // SISTEMA DE PREDICCIONES
+
         // =============================================
+
         
+
         function calcularPatronesCompra(maxDate) {
+
             const hoy = new Date();
+
             
+
             Object.values(DB.clients).forEach(cliente => {
+
                 if (cliente.compras.length < 2) {
+
                     // Sin suficiente historial
+
                     return;
+
                 }
+
                 
+
                 // Ordenar compras
+
                 cliente.compras.sort((a, b) => a - b);
+
                 
+
                 // Calcular frecuencia promedio (días entre compras)
+
                 const intervalos = [];
+
                 for (let i = 1; i < cliente.compras.length; i++) {
+
                     const dias = diasEntre(cliente.compras[i-1], cliente.compras[i]);
+
                     intervalos.push(dias);
+
                 }
+
                 
+
                 const frecuenciaPromedio = intervalos.reduce((a, b) => a + b, 0) / intervalos.length;
+
                 const desviacion = Math.sqrt(intervalos.map(x => Math.pow(x - frecuenciaPromedio, 2)).reduce((a, b) => a + b, 0) / intervalos.length);
+
                 
+
                 // Determinar si es comprador recurrente
+
                 const esRecurrente = cliente.compras.length >= 3 && frecuenciaPromedio < 90;
+
                 
+
                 // Productos recurrentes (comprados 2+ veces)
+
                 const productosRec = Object.values(cliente.productosRecurrentes)
+
                     .filter(p => p.veces >= 2 && p.categoria === 'AROMATIZACION')
+
                     .sort((a, b) => b.veces - a.veces);
+
                 
+
                 const tieneProductosRecurrentes = productosRec.length > 0;
+
                 
+
                 // Calcular próxima fecha esperada
+
                 const ultimaCompra = cliente.lastDate;
+
                 const diasDesdeUltima = diasEntre(ultimaCompra, hoy);
+
                 const proximaFechaEsperada = new Date(ultimaCompra);
+
                 proximaFechaEsperada.setDate(proximaFechaEsperada.getDate() + Math.round(frecuenciaPromedio));
+
                 const diasHastaProxima = diasEntre(hoy, proximaFechaEsperada);
+
                 
+
                 // Guardar patrón
+
                 predicciones.patrones[cliente.name] = {
+
                     cliente: cliente,
+
                     frecuenciaPromedio: Math.round(frecuenciaPromedio),
+
                     desviacion: Math.round(desviacion),
+
                     esRecurrente: esRecurrente,
+
                     tieneProductosRecurrentes: tieneProductosRecurrentes,
+
                     productosRecurrentes: productosRec,
+
                     ultimaCompra: ultimaCompra,
+
                     diasDesdeUltima: diasDesdeUltima,
+
                     proximaFechaEsperada: proximaFechaEsperada,
+
                     diasHastaProxima: diasHastaProxima,
+
                     confianza: calcularConfianza(cliente.compras.length, desviacion, tieneProductosRecurrentes)
+
                 };
+
                 
+
                 // Clasificar en categorías de acción
+
                 if (esRecurrente || tieneProductosRecurrentes) {
+
                     if (diasDesdeUltima > frecuenciaPromedio + 7) {
+
                         // ATRASADO
+
                         predicciones.atrasados.push(predicciones.patrones[cliente.name]);
+
                     } else if (diasHastaProxima <= 7 && diasHastaProxima >= -7) {
+
                         // URGENTE (esta semana)
+
                         predicciones.urgentes.push(predicciones.patrones[cliente.name]);
+
                     } else if (diasHastaProxima > 7 && diasHastaProxima <= 30) {
+
                         // PRÓXIMO
+
                         predicciones.proximos.push(predicciones.patrones[cliente.name]);
+
                     }
+
                 }
+
             });
+
             
+
             // Ordenar por prioridad
+
             predicciones.urgentes.sort((a, b) => a.diasHastaProxima - b.diasHastaProxima);
+
             predicciones.atrasados.sort((a, b) => b.diasDesdeUltima - a.diasDesdeUltima);
+
             predicciones.proximos.sort((a, b) => a.diasHastaProxima - b.diasHastaProxima);
+
             
+
             // Actualizar KPIs
+
             document.getElementById('kpi-predicciones').innerText = predicciones.urgentes.length;
+
             document.getElementById('alert-esta-semana').innerText = predicciones.urgentes.length;
+
             document.getElementById('alert-atrasados').innerText = predicciones.atrasados.length;
+
             document.getElementById('alert-proximos').innerText = predicciones.proximos.length;
+
             
+
             // Contar productos recurrentes únicos
+
             const clientesConRecurrentes = Object.values(predicciones.patrones)
+
                 .filter(p => p.tieneProductosRecurrentes).length;
+
             document.getElementById('alert-recurrentes').innerText = clientesConRecurrentes;
+
             
+
             // Renderizar listas
+
             renderListaPredicciones();
+
         }
+
         
+
         function calcularConfianza(numCompras, desviacion, tieneRecurrentes) {
+
             let confianza = 50; // Base
+
             
+
             // Más compras = más confianza
+
             confianza += Math.min(numCompras * 5, 30);
+
             
+
             // Menor desviación = más confianza
+
             if (desviacion < 10) confianza += 20;
+
             else if (desviacion < 20) confianza += 10;
+
             
+
             // Productos recurrentes = más confianza
+
             if (tieneRecurrentes) confianza += 20;
+
             
+
             return Math.min(confianza, 100);
+
         }
+
+
 
         function renderListaPredicciones() {
+
             // URGENTES
+
             const listaUrgentes = document.getElementById('lista-urgentes');
+
             document.getElementById('count-urgentes').innerText = predicciones.urgentes.length;
+
             
+
             if (predicciones.urgentes.length === 0) {
+
                 listaUrgentes.innerHTML = '<div class="text-center text-gray-400 py-8"><i class="fas fa-check-circle text-4xl mb-2"></i><br>¡Genial! No hay alertas urgentes</div>';
+
             } else {
+
                 listaUrgentes.innerHTML = predicciones.urgentes.map(pred => {
+
                     const productos = pred.productosRecurrentes.slice(0, 2).map(p => p.nombre).join(', ');
+
                     return `
+
                         <div class="bg-red-50 border-2 border-red-200 rounded-lg p-4 hover:shadow-lg transition cursor-pointer" onclick="verDetallePrediccion('${pred.cliente.name.replace(/'/g, "\\'")}')">
+
                             <div class="flex justify-between items-start mb-2">
+
                                 <div class="flex-1">
+
                                     <div class="font-bold text-gray-800">${pred.cliente.name}</div>
+
                                     <div class="text-xs text-gray-600 font-mono">${pred.cliente.rut}</div>
+
                                     <div class="text-xs text-gray-600 mt-1"><i class="fas fa-user-tie"></i> ${pred.cliente.vendedor}</div>
+
                                 </div>
+
                                 <div class="text-right">
+
                                     <div class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold mb-1">
+
                                         ${pred.diasHastaProxima >= 0 ? `En ${pred.diasHastaProxima} días` : `HOY`}
+
                                     </div>
+
                                     <div class="text-xs text-red-700 font-bold">Confianza ${pred.confianza}%</div>
+
                                 </div>
+
                             </div>
+
                             <div class="grid grid-cols-2 gap-2 text-xs bg-white p-2 rounded">
+
                                 <div>
+
                                     <span class="text-gray-500">Compra cada:</span>
+
                                     <span class="font-bold text-purple-600">${pred.frecuenciaPromedio} días</span>
+
                                 </div>
+
                                 <div>
+
                                     <span class="text-gray-500">Última compra:</span>
+
                                     <span class="font-bold text-gray-700">${pred.ultimaCompra.toLocaleDateString('es-CL')}</span>
+
                                 </div>
+
                             </div>
+
                             ${pred.tieneProductosRecurrentes ? `
+
                                 <div class="mt-2 text-xs bg-purple-50 p-2 rounded border border-purple-200">
+
                                     <i class="fas fa-sync-alt text-purple-600"></i> 
+
                                     <span class="font-bold text-purple-700">Productos recurrentes:</span> ${productos}
+
                                 </div>
+
                             ` : ''}
+
                             <div class="mt-2 flex gap-2">
+
                                 <button onclick="event.stopPropagation(); copiarMensajeContacto('${pred.cliente.name.replace(/'/g, "\\'")}', 'urgente')" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+
                                     <i class="fas fa-comment"></i> Copiar mensaje
+
                                 </button>
+
                                 <button onclick="event.stopPropagation(); verDetalleCliente('${pred.cliente.name.replace(/'/g, "\\'")}', true)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+
                                     <i class="fas fa-chart-line"></i> Ver historial
+
                                 </button>
+
                             </div>
+
                         </div>
+
                     `;
+
                 }).join('');
+
             }
+
             
+
             // ATRASADOS
+
             const listaAtrasados = document.getElementById('lista-atrasados');
+
             document.getElementById('count-atrasados').innerText = predicciones.atrasados.length;
+
             
+
             if (predicciones.atrasados.length === 0) {
+
                 listaAtrasados.innerHTML = '<div class="text-center text-gray-400 py-8">No hay clientes atrasados</div>';
+
             } else {
+
                 listaAtrasados.innerHTML = predicciones.atrasados.map(pred => {
+
                     const diasAtraso = pred.diasDesdeUltima - pred.frecuenciaPromedio;
+
                     return `
+
                         <div class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 hover:shadow-lg transition cursor-pointer" onclick="verDetallePrediccion('${pred.cliente.name.replace(/'/g, "\\'")}')">
+
                             <div class="flex justify-between items-start mb-2">
+
                                 <div class="flex-1">
+
                                     <div class="font-bold text-gray-800">${pred.cliente.name}</div>
+
                                     <div class="text-xs text-gray-600 font-mono">${pred.cliente.rut}</div>
+
                                     <div class="text-xs text-gray-600 mt-1"><i class="fas fa-user-tie"></i> ${pred.cliente.vendedor}</div>
+
                                 </div>
+
                                 <div class="text-right">
+
                                     <div class="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs font-bold mb-1">
+
                                         Atrasado ${Math.round(diasAtraso)} días
+
                                     </div>
+
                                     <div class="text-xs text-yellow-700">Última: ${pred.diasDesdeUltima} días</div>
+
                                 </div>
+
                             </div>
+
                             <div class="text-xs bg-white p-2 rounded">
+
                                 <span class="text-gray-500">Debió comprar hace:</span>
+
                                 <span class="font-bold text-red-600">${Math.round(diasAtraso)} días</span>
+
                                 <span class="text-gray-500 ml-2">| Frecuencia normal:</span>
+
                                 <span class="font-bold text-purple-600">${pred.frecuenciaPromedio} días</span>
+
                             </div>
+
                             <div class="mt-2 flex gap-2">
+
                                 <button onclick="event.stopPropagation(); copiarMensajeContacto('${pred.cliente.name.replace(/'/g, "\\'")}', 'atrasado')" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+
                                     <i class="fas fa-comment"></i> Copiar mensaje
+
                                 </button>
+
                                 <button onclick="event.stopPropagation(); verDetalleCliente('${pred.cliente.name.replace(/'/g, "\\'")}', true)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold transition">
+
                                     <i class="fas fa-chart-line"></i> Ver historial
+
                                 </button>
+
                             </div>
+
                         </div>
+
                     `;
+
                 }).join('');
+
             }
+
             
+
             // PRÓXIMOS
+
             const listaProximos = document.getElementById('lista-proximos');
+
             document.getElementById('count-proximos').innerText = predicciones.proximos.length;
+
             
+
             if (predicciones.proximos.length === 0) {
+
                 listaProximos.innerHTML = '<div class="text-center text-gray-400 py-8">No hay oportunidades próximas</div>';
+
             } else {
+
                 listaProximos.innerHTML = predicciones.proximos.map(pred => {
+
                     return `
+
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 hover:shadow-lg transition cursor-pointer" onclick="verDetallePrediccion('${pred.cliente.name.replace(/'/g, "\\'")}')">
+
                             <div class="flex justify-between items-start">
+
                                 <div class="flex-1">
+
                                     <div class="font-bold text-gray-800">${pred.cliente.name}</div>
+
                                     <div class="text-xs text-gray-600 font-mono">${pred.cliente.rut}</div>
+
                                     <div class="text-xs text-gray-600 mt-1"><i class="fas fa-user-tie"></i> ${pred.cliente.vendedor}</div>
+
                                 </div>
+
                                 <div class="text-right">
+
                                     <div class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold mb-1">
+
                                         En ${pred.diasHastaProxima} días
+
                                     </div>
+
                                     <div class="text-xs text-blue-700">${pred.proximaFechaEsperada.toLocaleDateString('es-CL')}</div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     `;
+
                 }).join('');
+
             }
+
             
+
             // Tabla de vendedores
+
             renderTablaVendedores();
+
         }
+
         
+
         function renderTablaVendedores() {
+
             const vendedoresStats = {};
+
             
+
             Object.values(predicciones.patrones).forEach(pred => {
+
                 const vendedor = pred.cliente.vendedor;
+
                 if (!vendedoresStats[vendedor]) {
+
                     vendedoresStats[vendedor] = {
+
                         urgentes: 0,
+
                         atrasados: 0,
+
                         proximos: 0,
+
                         total: 0
+
                     };
+
                 }
+
                 
+
                 vendedoresStats[vendedor].total++;
+
                 
+
                 if (predicciones.urgentes.find(u => u.cliente.name === pred.cliente.name)) {
+
                     vendedoresStats[vendedor].urgentes++;
+
                 }
+
                 if (predicciones.atrasados.find(a => a.cliente.name === pred.cliente.name)) {
+
                     vendedoresStats[vendedor].atrasados++;
+
                 }
+
                 if (predicciones.proximos.find(p => p.cliente.name === pred.cliente.name)) {
+
                     vendedoresStats[vendedor].proximos++;
+
                 }
+
             });
+
             
+
             const tbody = Object.entries(vendedoresStats).map(([vendedor, stats]) => `
+
                 <tr class="border-b hover:bg-purple-50">
+
                     <td class="p-3 font-bold text-gray-800">${vendedor}</td>
+
                     <td class="p-3 text-center">
+
                         <span class="bg-red-100 text-red-700 px-2 py-1 rounded font-bold">${stats.urgentes}</span>
+
                     </td>
+
                     <td class="p-3 text-center">
+
                         <span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-bold">${stats.atrasados}</span>
+
                     </td>
+
                     <td class="p-3 text-center">
+
                         <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">${stats.proximos}</span>
+
                     </td>
+
                     <td class="p-3 text-center font-bold text-gray-700">${stats.total}</td>
+
                 </tr>
+
             `).join('');
+
             
+
             document.getElementById('tabla-vendedores').innerHTML = `
+
                 <table class="w-full text-sm">
+
                     <thead class="bg-purple-50 text-purple-700 font-bold">
+
                         <tr>
+
                             <th class="p-3 text-left">Vendedor</th>
+
                             <th class="p-3 text-center">Urgentes</th>
+
                             <th class="p-3 text-center">Atrasados</th>
+
                             <th class="p-3 text-center">Próximos</th>
+
                             <th class="p-3 text-center">Total</th>
+
                         </tr>
+
                     </thead>
+
                     <tbody>
+
                         ${tbody}
+
                     </tbody>
+
                 </table>
+
             `;
+
         }
 
+
+
         // =============================================
+
         // SISTEMA DE FILTROS
-        // =============================================
-        
-        function poblarFiltros() {
-            // Filtro de vendedores
-            const selectVendedor = document.getElementById('filtro-vendedor');
-            selectVendedor.innerHTML = '<option value="">Todos los vendedores</option>';
-            Array.from(DB.vendedores).sort().forEach(v => {
-                selectVendedor.innerHTML += `<option value="${v}">${v}</option>`;
-            });
-            
-            // Filtro de meses
-            const selectMes = document.getElementById('filtro-mes');
-            selectMes.innerHTML = '<option value="">Todos los períodos</option>';
-            const mesesArray = Array.from(DB.meses).sort().reverse();
-            const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            mesesArray.forEach(mes => {
-                const [year, month] = mes.split('-');
-                const nombre = `${mesesNombres[parseInt(month)-1]} ${year}`;
-                selectMes.innerHTML += `<option value="${mes}">${nombre}</option>`;
-            });
-        }
-        
-        function aplicarFiltros() {
-            // Capturar filtros activos
-            filtrosActivos.vendedor = document.getElementById('filtro-vendedor').value;
-            filtrosActivos.mes = document.getElementById('filtro-mes').value;
-            filtrosActivos.categoria = document.getElementById('filtro-categoria').value;
-            
-            // Filtrar datos
-            let datosFiltrados = DB.rawData;
-            
-            if (filtrosActivos.vendedor) {
-                datosFiltrados = datosFiltrados.filter(d => d.vendedor === filtrosActivos.vendedor);
-            }
-            
-            if (filtrosActivos.mes) {
-                datosFiltrados = datosFiltrados.filter(d => d.monthKey === filtrosActivos.mes);
-            }
-            
-            if (filtrosActivos.categoria) {
-                datosFiltrados = datosFiltrados.filter(d => d.categoria === filtrosActivos.categoria);
-            }
-            
-            // Recalcular estadísticas con datos filtrados
-            recalcularEstadisticasFiltradas(datosFiltrados);
-            
-            // Mostrar filtros activos
-            mostrarFiltrosActivos();
-        }
-        
-        function recalcularEstadisticasFiltradas(datos) {
-            let totalVentas = 0;
-            let clientesUnicos = new Set();
-            let tickets = 0;
-            let salesByMonth = {};
-            let topProducts = {};
-            
-            datos.forEach(d => {
-                totalVentas += d.neto;
-                clientesUnicos.add(d.name);
-                tickets++;
-                
-                salesByMonth[d.monthKey] = (salesByMonth[d.monthKey] || 0) + d.neto;
-                
-                if (d.prodName) {
-                    if (!topProducts[d.prodName]) {
-                        topProducts[d.prodName] = { qty: 0, total: 0, categoria: d.categoria };
-                    }
-                    topProducts[d.prodName].qty += d.qty;
-                    topProducts[d.prodName].total += d.neto;
-                }
-            });
-            
-            const ticketProm = tickets > 0 ? totalVentas / tickets : 0;
-            
-            // Actualizar KPIs del resumen
-            document.getElementById('resumen-ventas').innerText = CLP.format(totalVentas);
-            document.getElementById('resumen-tickets').innerText = `${tickets} tickets`;
-            document.getElementById('resumen-clientes').innerText = clientesUnicos.size;
-            document.getElementById('resumen-ticket-prom').innerText = CLP.format(ticketProm);
-            
-            // Actualizar gráfico
-            renderChart(salesByMonth);
-            
-            // Actualizar top productos
-            renderTopProductosFiltrado(topProducts);
-        }
-        
-        function renderTopProductosFiltrado(products) {
-            const tbody = document.getElementById('top-products-body');
-            tbody.innerHTML = '';
-            const top = Object.entries(products).sort(([,a],[,b]) => b.qty - a.qty).slice(0, 10);
-            
-            top.forEach(([name, data]) => {
-                const iconoCat = data.categoria === 'AROMATIZACION' ? '🌸' : (data.categoria === 'LIMPIEZA' ? '🧼' : '📦');
-                tbody.innerHTML += `
-                    <tr class="border-b">
-                        <td class="p-3 font-medium text-gray-700 truncate max-w-xs" title="${name}">${name}</td>
-                        <td class="p-3 text-center text-sm">${iconoCat} ${data.categoria}</td>
-                        <td class="p-3 text-right text-gray-600">${data.qty}</td>
-                        <td class="p-3 text-right font-bold text-blue-600">${CLP.format(data.total)}</td>
-                    </tr>
-                `;
-            });
-        }
-        
-        function mostrarFiltrosActivos() {
-            const hayFiltros = filtrosActivos.vendedor || filtrosActivos.mes || filtrosActivos.categoria;
-            const container = document.getElementById('filtros-activos');
-            const list = document.getElementById('filtros-activos-list');
-            
-            if (!hayFiltros) {
-                container.classList.add('hidden');
-                return;
-            }
-            
-            container.classList.remove('hidden');
-            list.innerHTML = '';
-            
-            if (filtrosActivos.vendedor) {
-                list.innerHTML += `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Vendedor: ${filtrosActivos.vendedor}</span>`;
-            }
-            if (filtrosActivos.mes) {
-                const [year, month] = filtrosActivos.mes.split('-');
-                const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                const nombre = `${mesesNombres[parseInt(month)-1]} ${year}`;
-                list.innerHTML += `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Período: ${nombre}</span>`;
-            }
-            if (filtrosActivos.categoria) {
-                list.innerHTML += `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Categoría: ${filtrosActivos.categoria}</span>`;
-            }
-        }
-        
-        function limpiarFiltros() {
-            document.getElementById('filtro-vendedor').value = '';
-            document.getElementById('filtro-mes').value = '';
-            document.getElementById('filtro-categoria').value = '';
-            aplicarFiltros();
-        }
 
         // =============================================
-        // FUNCIONES DE MENSAJERÍA
-        // =============================================
+
         
+
+        function poblarFiltros() {
+
+            // Filtro de vendedores
+
+            const selectVendedor = document.getElementById('filtro-vendedor');
+
+            selectVendedor.innerHTML = '<option value="">Todos los vendedores</option>';
+
+            Array.from(DB.vendedores).sort().forEach(v => {
+
+                selectVendedor.innerHTML += `<option value="${v}">${v}</option>`;
+
+            });
+
+            
+
+            // Filtro de meses
+
+            const selectMes = document.getElementById('filtro-mes');
+
+            selectMes.innerHTML = '<option value="">Todos los períodos</option>';
+
+            const mesesArray = Array.from(DB.meses).sort().reverse();
+
+            const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+            mesesArray.forEach(mes => {
+
+                const [year, month] = mes.split('-');
+
+                const nombre = `${mesesNombres[parseInt(month)-1]} ${year}`;
+
+                selectMes.innerHTML += `<option value="${mes}">${nombre}</option>`;
+
+            });
+
+        }
+
+        
+
+        function aplicarFiltros() {
+
+            // Capturar filtros activos
+
+            filtrosActivos.vendedor = document.getElementById('filtro-vendedor').value;
+
+            filtrosActivos.mes = document.getElementById('filtro-mes').value;
+
+            filtrosActivos.categoria = document.getElementById('filtro-categoria').value;
+
+            
+
+            // Filtrar datos
+
+            let datosFiltrados = DB.rawData;
+
+            
+
+            if (filtrosActivos.vendedor) {
+
+                datosFiltrados = datosFiltrados.filter(d => d.vendedor === filtrosActivos.vendedor);
+
+            }
+
+            
+
+            if (filtrosActivos.mes) {
+
+                datosFiltrados = datosFiltrados.filter(d => d.monthKey === filtrosActivos.mes);
+
+            }
+
+            
+
+            if (filtrosActivos.categoria) {
+
+                datosFiltrados = datosFiltrados.filter(d => d.categoria === filtrosActivos.categoria);
+
+            }
+
+            
+
+            // Recalcular estadísticas con datos filtrados
+
+            recalcularEstadisticasFiltradas(datosFiltrados);
+
+            
+
+            // Mostrar filtros activos
+
+            mostrarFiltrosActivos();
+
+        }
+
+        
+
+        function recalcularEstadisticasFiltradas(datos) {
+
+            let totalVentas = 0;
+
+            let clientesUnicos = new Set();
+
+            let tickets = 0;
+
+            let salesByMonth = {};
+
+            let topProducts = {};
+
+            
+
+            datos.forEach(d => {
+
+                totalVentas += d.neto;
+
+                clientesUnicos.add(d.name);
+
+                tickets++;
+
+                
+
+                salesByMonth[d.monthKey] = (salesByMonth[d.monthKey] || 0) + d.neto;
+
+                
+
+                if (d.prodName) {
+
+                    if (!topProducts[d.prodName]) {
+
+                        topProducts[d.prodName] = { qty: 0, total: 0, categoria: d.categoria };
+
+                    }
+
+                    topProducts[d.prodName].qty += d.qty;
+
+                    topProducts[d.prodName].total += d.neto;
+
+                }
+
+            });
+
+            
+
+            const ticketProm = tickets > 0 ? totalVentas / tickets : 0;
+
+            
+
+            // Actualizar KPIs del resumen
+
+            document.getElementById('resumen-ventas').innerText = CLP.format(totalVentas);
+
+            document.getElementById('resumen-tickets').innerText = `${tickets} tickets`;
+
+            document.getElementById('resumen-clientes').innerText = clientesUnicos.size;
+
+            document.getElementById('resumen-ticket-prom').innerText = CLP.format(ticketProm);
+
+            
+
+            // Actualizar gráfico
+
+            renderChart(salesByMonth);
+
+            
+
+            // Actualizar top productos
+
+            renderTopProductosFiltrado(topProducts);
+
+        }
+
+        
+
+        function renderTopProductosFiltrado(products) {
+
+            const tbody = document.getElementById('top-products-body');
+
+            tbody.innerHTML = '';
+
+            const top = Object.entries(products).sort(([,a],[,b]) => b.qty - a.qty).slice(0, 10);
+
+            
+
+            top.forEach(([name, data]) => {
+
+                const iconoCat = data.categoria === 'AROMATIZACION' ? '🌸' : (data.categoria === 'LIMPIEZA' ? '🧼' : '📦');
+
+                tbody.innerHTML += `
+
+                    <tr class="border-b">
+
+                        <td class="p-3 font-medium text-gray-700 truncate max-w-xs" title="${name}">${name}</td>
+
+                        <td class="p-3 text-center text-sm">${iconoCat} ${data.categoria}</td>
+
+                        <td class="p-3 text-right text-gray-600">${data.qty}</td>
+
+                        <td class="p-3 text-right font-bold text-blue-600">${CLP.format(data.total)}</td>
+
+                    </tr>
+
+                `;
+
+            });
+
+        }
+
+        
+
+        function mostrarFiltrosActivos() {
+
+            const hayFiltros = filtrosActivos.vendedor || filtrosActivos.mes || filtrosActivos.categoria;
+
+            const container = document.getElementById('filtros-activos');
+
+            const list = document.getElementById('filtros-activos-list');
+
+            
+
+            if (!hayFiltros) {
+
+                container.classList.add('hidden');
+
+                return;
+
+            }
+
+            
+
+            container.classList.remove('hidden');
+
+            list.innerHTML = '';
+
+            
+
+            if (filtrosActivos.vendedor) {
+
+                list.innerHTML += `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Vendedor: ${filtrosActivos.vendedor}</span>`;
+
+            }
+
+            if (filtrosActivos.mes) {
+
+                const [year, month] = filtrosActivos.mes.split('-');
+
+                const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+                const nombre = `${mesesNombres[parseInt(month)-1]} ${year}`;
+
+                list.innerHTML += `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Período: ${nombre}</span>`;
+
+            }
+
+            if (filtrosActivos.categoria) {
+
+                list.innerHTML += `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Categoría: ${filtrosActivos.categoria}</span>`;
+
+            }
+
+        }
+
+        
+
+        function limpiarFiltros() {
+
+            document.getElementById('filtro-vendedor').value = '';
+
+            document.getElementById('filtro-mes').value = '';
+
+            document.getElementById('filtro-categoria').value = '';
+
+            aplicarFiltros();
+
+        }
+
+
+
+        // =============================================
+
+        // FUNCIONES DE MENSAJERÍA
+
+        // =============================================
+
+        
+
         function copiarMensajeContacto(nombreCliente, tipo) {
+
             const pred = predicciones.patrones[nombreCliente];
+
             if (!pred) return;
+
             
+
             let mensaje = '';
+
             const productos = pred.productosRecurrentes.length > 0 
+
                 ? pred.productosRecurrentes.slice(0, 2).map(p => p.nombre).join(' y ')
+
                 : 'productos';
+
             
+
             if (tipo === 'urgente') {
+
                 mensaje = `Hola, ¿cómo está? 👋
+
+
 
 Soy de AROMAKER y quería hacer seguimiento de su última orden.
 
+
+
 Vi que generalmente compra cada ${pred.frecuenciaPromedio} días, y según su historial, esta semana sería un buen momento para realizar su próximo pedido de ${productos}.
+
+
 
 ¿Le preparo una cotización? Tenemos stock disponible.
 
+
+
 Quedo atento. ¡Saludos!`;
+
             } else if (tipo === 'atrasado') {
+
                 const diasAtraso = Math.round(pred.diasDesdeUltima - pred.frecuenciaPromedio);
+
                 mensaje = `Estimado/a, buen día 👋
+
+
 
 Le escribo de AROMAKER para hacer seguimiento.
 
+
+
 Noté que hace ${pred.diasDesdeUltima} días realizó su última compra. Según su patrón habitual, generalmente vuelve a ordenar ${productos} cada ${pred.frecuenciaPromedio} días aproximadamente.
+
+
 
 ¿Necesita reposición de stock? ¿Le ayudo con algo?
 
+
+
 Quedamos atentos. ¡Saludos!`;
+
             }
+
             
+
             navigator.clipboard.writeText(mensaje).then(() => {
+
                 mostrarNotificacion('✅ Mensaje copiado al portapapeles', 'success');
+
             }).catch(() => {
+
                 mostrarNotificacion('❌ Error al copiar', 'error');
+
             });
-        }
-        
-        function mostrarNotificacion(texto, tipo) {
-            const notif = document.createElement('div');
-            notif.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg font-bold text-white transition-all duration-300 ${tipo === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
-            notif.textContent = texto;
-            document.body.appendChild(notif);
-            
-            setTimeout(() => notif.style.transform = 'translateX(0)', 10);
-            
-            setTimeout(() => {
-                notif.style.opacity = '0';
-                notif.style.transform = 'translateX(100%)';
-                setTimeout(() => document.body.removeChild(notif), 300);
-            }, 3000);
+
         }
 
+        
+
+        function mostrarNotificacion(texto, tipo) {
+
+            const notif = document.createElement('div');
+
+            notif.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg font-bold text-white transition-all duration-300 ${tipo === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+
+            notif.textContent = texto;
+
+            document.body.appendChild(notif);
+
+            
+
+            setTimeout(() => notif.style.transform = 'translateX(0)', 10);
+
+            
+
+            setTimeout(() => {
+
+                notif.style.opacity = '0';
+
+                notif.style.transform = 'translateX(100%)';
+
+                setTimeout(() => document.body.removeChild(notif), 300);
+
+            }, 3000);
+
+        }
+
+
+
         // =============================================
+
         // NAVEGACIÓN Y UI
+
         // =============================================
+
         
+
         function switchTab(tab) {
+
             document.getElementById('global-view').classList.add('hidden');
+
             document.getElementById('detail-view').classList.add('hidden');
+
             document.getElementById('cotizaciones-view').classList.add('hidden');
+
             document.getElementById('predicciones-view').classList.add('hidden');
+
             
+
             document.getElementById('tab-ventas').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-gray-200 text-gray-600 hover:bg-gray-300';
+
             document.getElementById('tab-cotizaciones').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-gray-200 text-gray-600 hover:bg-gray-300';
+
             document.getElementById('tab-predicciones').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-gray-200 text-gray-600 hover:bg-gray-300';
+
             
+
             if (tab === 'ventas') {
+
                 document.getElementById('global-view').classList.remove('hidden');
+
                 document.getElementById('tab-ventas').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-blue-600 text-white';
+
             } else if (tab === 'cotizaciones') {
+
                 document.getElementById('cotizaciones-view').classList.remove('hidden');
+
                 document.getElementById('tab-cotizaciones').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-blue-600 text-white';
+
             } else if (tab === 'predicciones') {
+
                 document.getElementById('predicciones-view').classList.remove('hidden');
+
                 document.getElementById('tab-predicciones').className = 'px-4 py-2 text-sm font-bold rounded-lg transition bg-orange-600 text-white';
+
             }
+
         }
+
         
+
         function renderChart(salesData) {
+
             const ctx = document.getElementById('salesChart').getContext('2d');
+
             const sortedKeys = Object.keys(salesData).sort();
+
             
+
             if(chartInstance) chartInstance.destroy();
+
             
+
             chartInstance = new Chart(ctx, {
+
                 type: 'bar',
+
                 data: {
+
                     labels: sortedKeys,
+
                     datasets: [{
+
                         label: 'Venta Neta',
+
                         data: sortedKeys.map(k => salesData[k]),
+
                         backgroundColor: '#2563eb',
+
                         borderRadius: 4
+
                     }]
+
                 },
+
                 options: { responsive: true, maintainAspectRatio: false }
+
             });
+
         }
+
         
+
         function verDetalleCliente(nombreCliente, fromPrediction = false) {
+
             const cliente = DB.clients[nombreCliente];
+
             if (!cliente) return;
+
             
+
             // Ocultar otras vistas
+
             document.getElementById('predicciones-view').classList.add('hidden');
+
             document.getElementById('global-view').classList.add('hidden');
+
             document.getElementById('detail-view').classList.remove('hidden');
+
             
+
             // Datos básicos
+
             document.getElementById('det-name').innerText = cliente.name;
+
             document.getElementById('det-rut').innerText = cliente.rut || 'S/R';
+
             document.getElementById('det-address').innerText = cliente.address;
+
             document.getElementById('det-total').innerText = CLP.format(cliente.total);
+
             document.getElementById('det-last-date').innerText = cliente.lastDate.toLocaleDateString('es-CL');
+
             
+
             const diasInactivo = diasEntre(cliente.lastDate, new Date());
+
             document.getElementById('det-days').innerText = diasInactivo;
+
             
+
             // Patrón de compra
+
             const patron = predicciones.patrones[nombreCliente];
+
             if (patron) {
+
                 document.getElementById('det-frecuencia').innerText = `${patron.frecuenciaPromedio} días`;
+
                 document.getElementById('det-frecuencia-desc').innerText = `Compra cada ${patron.frecuenciaPromedio} días aprox.`;
+
                 document.getElementById('det-proxima').innerText = patron.proximaFechaEsperada.toLocaleDateString('es-CL');
+
                 document.getElementById('det-proxima-dias').innerText = patron.diasHastaProxima >= 0 
+
                     ? `En ${patron.diasHastaProxima} días` 
+
                     : `Atrasado ${Math.abs(patron.diasHastaProxima)} días`;
+
                 
+
                 // Badge de predicción
+
                 const predBadge = document.getElementById('det-prediction-badge');
+
                 predBadge.classList.remove('hidden');
+
                 if (patron.diasHastaProxima <= 7 && patron.diasHastaProxima >= -7) {
+
                     predBadge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-red-600";
+
                     predBadge.innerText = "COMPRA INMINENTE";
+
                 } else if (patron.diasDesdeUltima > patron.frecuenciaPromedio + 7) {
+
                     predBadge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-yellow-600";
+
                     predBadge.innerText = "ATRASADO";
+
                 } else {
+
                     predBadge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-blue-600";
+
                     predBadge.innerText = "EN PLAZO";
+
                 }
+
             } else {
+
                 document.getElementById('det-frecuencia').innerText = '-';
+
                 document.getElementById('det-frecuencia-desc').innerText = 'Sin patrón detectado';
+
                 document.getElementById('det-proxima').innerText = '-';
+
                 document.getElementById('det-proxima-dias').innerText = '-';
+
                 document.getElementById('det-prediction-badge').classList.add('hidden');
+
             }
+
             
+
             // Estado general
+
             const badge = document.getElementById('det-status-badge');
+
             if (diasInactivo > 90) {
+
                 badge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-red-600";
+
                 badge.innerText = "PERDIDO";
+
             } else if (diasInactivo > 45) {
+
                 badge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-yellow-500";
+
                 badge.innerText = "EN RIESGO";
+
             } else {
+
                 badge.className = "px-4 py-2 rounded font-bold text-white text-sm shadow bg-green-600";
+
                 badge.innerText = "ACTIVO";
+
             }
+
             
+
             // Productos recurrentes
+
             const prodRecContainer = document.getElementById('productos-recurrentes-cliente');
+
             const productosRec = Object.values(cliente.productosRecurrentes)
+
                 .filter(p => p.veces >= 2)
+
                 .sort((a, b) => b.veces - a.veces);
+
             
+
             if (productosRec.length === 0) {
+
                 prodRecContainer.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-4">No se detectaron productos recurrentes</div>';
+
             } else {
+
                 prodRecContainer.innerHTML = productosRec.map(p => {
+
                     const icono = p.categoria === 'AROMATIZACION' ? '🌸' : (p.categoria === 'LIMPIEZA' ? '🧼' : '📦');
+
                     return `
+
                         <div class="bg-white border-2 border-purple-200 rounded-lg p-3">
+
                             <div class="flex justify-between items-start mb-2">
+
                                 <div class="font-bold text-sm text-gray-800">${icono} ${p.nombre.substring(0, 40)}</div>
+
                                 <div class="bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-bold">${p.veces}x</div>
+
                             </div>
+
                             <div class="text-xs text-gray-600">
+
                                 <div>Total: ${CLP.format(p.totalGastado)}</div>
+
                                 <div>Última: ${p.ultimaCompra.toLocaleDateString('es-CL')}</div>
+
                             </div>
+
                         </div>
+
                     `;
+
                 }).join('');
+
             }
+
             
+
             // Historial de facturas
+
             const container = document.getElementById('invoice-history');
+
             container.innerHTML = '';
+
             const sortedInvoices = Object.values(cliente.invoices).sort((a,b) => b.dateObj - a.dateObj);
+
             
+
             sortedInvoices.forEach(inv => {
+
                 let itemsHtml = inv.items.map(i => {
+
                     const subtotal = i.qty * i.val;
+
                     const icono = i.categoria === 'AROMATIZACION' ? '🌸' : (i.categoria === 'LIMPIEZA' ? '🧼' : '📦');
+
                     return `
+
                     <div class="flex justify-between text-xs py-1 border-b border-gray-100 text-gray-600">
+
                         <span class="w-2/3">${icono} ${i.qty} x ${i.prod.substring(0,40)}</span>
+
                         <span class="text-right w-1/3">
+
                             <span class="text-gray-400">${CLP.format(i.val)}</span> = 
+
                             <span class="font-semibold">${CLP.format(subtotal)}</span>
+
                         </span>
+
                     </div>
+
                     `;
+
                 }).join('');
+
+
 
                 const html = `
+
                     <div class="bg-white border rounded p-3 hover:shadow-md transition">
+
                         <div class="flex justify-between font-bold text-sm text-gray-700 mb-2">
+
                             <div><i class="far fa-file-alt"></i> ${inv.date} (Doc: ${inv.id})</div>
+
                             <div class="text-blue-600">${CLP.format(inv.total)}</div>
+
                         </div>
+
                         <div class="bg-gray-50 p-2 rounded">${itemsHtml}</div>
+
                     </div>
+
                 `;
+
                 container.innerHTML += html;
+
             });
-        }
-        
-        function showGlobal() {
-            document.getElementById('detail-view').classList.add('hidden');
-            switchTab('predicciones'); // Volver a predicciones por defecto
-        }
-        
-        function descargarListaContactos(tipo) {
-            let datos = [];
-            
-            if (tipo === 'urgente') {
-                datos = predicciones.urgentes.map(p => ({
-                    'Cliente': p.cliente.name,
-                    'RUT': p.cliente.rut,
-                    'Vendedor': p.cliente.vendedor,
-                    'Frecuencia (días)': p.frecuenciaPromedio,
-                    'Última Compra': p.ultimaCompra.toLocaleDateString('es-CL'),
-                    'Días desde última': p.diasDesdeUltima,
-                    'Fecha Esperada': p.proximaFechaEsperada.toLocaleDateString('es-CL'),
-                    'Días para próxima': p.diasHastaProxima,
-                    'Confianza %': p.confianza,
-                    'Productos Recurrentes': p.productosRecurrentes.map(pr => pr.nombre).join(', '),
-                    'Acción': 'CONTACTAR URGENTE'
-                }));
-            } else if (tipo === 'atrasado') {
-                datos = predicciones.atrasados.map(p => ({
-                    'Cliente': p.cliente.name,
-                    'RUT': p.cliente.rut,
-                    'Vendedor': p.cliente.vendedor,
-                    'Frecuencia (días)': p.frecuenciaPromedio,
-                    'Última Compra': p.ultimaCompra.toLocaleDateString('es-CL'),
-                    'Días desde última': p.diasDesdeUltima,
-                    'Días de Atraso': Math.round(p.diasDesdeUltima - p.frecuenciaPromedio),
-                    'Acción': 'REACTIVAR'
-                }));
-            }
-            
-            const ws = XLSX.utils.json_to_sheet(datos);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Contactos");
-            
-            const fecha = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `Contactos_${tipo}_${fecha}.xlsx`);
-        }
-        
-        function cerrarModalDetalle() {
-            document.getElementById('modal-detalle-cot').classList.add('hidden');
+
         }
 
+        
+
+        function showGlobal() {
+
+            document.getElementById('detail-view').classList.add('hidden');
+
+            switchTab('predicciones'); // Volver a predicciones por defecto
+
+        }
+
+        
+
+        function descargarListaContactos(tipo) {
+
+            let datos = [];
+
+            
+
+            if (tipo === 'urgente') {
+
+                datos = predicciones.urgentes.map(p => ({
+
+                    'Cliente': p.cliente.name,
+
+                    'RUT': p.cliente.rut,
+
+                    'Vendedor': p.cliente.vendedor,
+
+                    'Frecuencia (días)': p.frecuenciaPromedio,
+
+                    'Última Compra': p.ultimaCompra.toLocaleDateString('es-CL'),
+
+                    'Días desde última': p.diasDesdeUltima,
+
+                    'Fecha Esperada': p.proximaFechaEsperada.toLocaleDateString('es-CL'),
+
+                    'Días para próxima': p.diasHastaProxima,
+
+                    'Confianza %': p.confianza,
+
+                    'Productos Recurrentes': p.productosRecurrentes.map(pr => pr.nombre).join(', '),
+
+                    'Acción': 'CONTACTAR URGENTE'
+
+                }));
+
+            } else if (tipo === 'atrasado') {
+
+                datos = predicciones.atrasados.map(p => ({
+
+                    'Cliente': p.cliente.name,
+
+                    'RUT': p.cliente.rut,
+
+                    'Vendedor': p.cliente.vendedor,
+
+                    'Frecuencia (días)': p.frecuenciaPromedio,
+
+                    'Última Compra': p.ultimaCompra.toLocaleDateString('es-CL'),
+
+                    'Días desde última': p.diasDesdeUltima,
+
+                    'Días de Atraso': Math.round(p.diasDesdeUltima - p.frecuenciaPromedio),
+
+                    'Acción': 'REACTIVAR'
+
+                }));
+
+            }
+
+            
+
+            const ws = XLSX.utils.json_to_sheet(datos);
+
+            const wb = XLSX.utils.book_new();
+
+            XLSX.utils.book_append_sheet(wb, ws, "Contactos");
+
+            
+
+            const fecha = new Date().toISOString().split('T')[0];
+
+            XLSX.writeFile(wb, `Contactos_${tipo}_${fecha}.xlsx`);
+
+        }
+
+        
+
+        function cerrarModalDetalle() {
+
+            document.getElementById('modal-detalle-cot').classList.add('hidden');
+
+        }
+
+
+
         // Inicializar mostrando la vista de predicciones por defecto
+
         window.onload = function() {
+
             switchTab('predicciones');
+
         };
+
     </script>
+
 </body>
+
 </html>
